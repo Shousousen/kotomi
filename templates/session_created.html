@@ -68,16 +68,17 @@
         <p class="text-gray-600 mb-4 text-center">再生中断と新しい音声再生の利用方法：</p>
         <div class="bg-gray-100 rounded p-4 font-mono break-all">
             <p>再生中の音声を中断して新しい音声を再生するには：</p>
-            <p class="text-blue-600">POST {{ request.host }}/session/{{ session_id }}/interrupt</p>
+            <p class="text-blue-600">POST {{ request.host }}/session/{{ session_id }}/speak</p>
             <p class="mt-2">リクエストボディの例:</p>
             <pre class="bg-gray-200 p-2 rounded">{
   "text": "新しい音声を再生します",
-  "style": "default"
+  "style": "default",
+  "interrupt": true
 }</pre>
             <p class="mt-2">例: curlコマンド</p>
-            <pre class="bg-gray-200 p-2 rounded">curl -X POST {{ request.host }}/session/{{ session_id }}/interrupt \
+            <pre class="bg-gray-200 p-2 rounded">curl -X POST {{ request.host }}/session/{{ session_id }}/speak \
 -H "Content-Type: application/json" \
--d '{"text": "新しい音声を再生します", "style": "default"}'</pre>
+-d '{"text": "新しい音声を再生します", "style": "default", "interrupt": true}'</pre>
         </div>
 
         <script>
@@ -100,10 +101,10 @@
                 const style = document.getElementById('styleSelect') ? document.getElementById('styleSelect').value : null;
                 if (!text.trim()) return;
 
-                const response = await fetch(`/session/${sessionId}/interrupt`, {
+                const response = await fetch(`/session/${sessionId}/speak`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ text, style })
+                    body: JSON.stringify({ text, style, interrupt: true })
                 });
 
                 const result = await response.json();
