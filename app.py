@@ -6,6 +6,7 @@ import requests
 from flask import Flask, request, jsonify, send_from_directory, render_template
 from uuid import UUID
 import webbrowser
+from pydub.utils import mediainfo
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 AUDIO_FOLDER = "static/audio"
@@ -142,11 +143,81 @@ def session_speak(session_id):
 def session_next(session_id):
     if session_id not in SESSIONS:
         return jsonify(filename=None), 404
-    q = SESSIONS[session_id]["queue"]
+
+    session = SESSIONS[session_id]
+    q = session["queue"]
+
+    # 再生中フラグが立っている場合は新しい音声を返さない
+    if session.get("is_playing", False):
+        return jsonify(filename=None)
+
     if not q.empty():
         filename = q.get()
+        session["is_playing"] = True  # 再生中フラグを設定
+
+        # 音声ファイルの長さを取得
+        filepath = os.path.join(AUDIO_FOLDER, filename)
+        try:
+            audio_info = mediainfo(filepath)
+            duration = float(audio_info["duration"])  # 再生時間を秒単位で取得
+        except Exception as e:
+            print(f"[エラー] 音声ファイルの長さ取得に失敗: {e}")
+            duration = 10  # デフォルトで10秒に設定
+
+        # 再生時間後にフラグをリセット
+        threading.Timer(duration, reset_playing_flag, args=[session_id]).start()
+
         return jsonify(filename=filename)
+
     return jsonify(filename=None)
+
+def reset_playing_flag(session_id):
+    if session_id in SESSIONS:
+        SESSIONS[session_id]["is_playing"] = False
+        print(f"[INFO] 再生中フラグをリセットしました: {session_id}")
+
+# 再生を中断して新しい音声を再生するオプションを追加
+@app.route("/session/<session_id>/interrupt", methods=["POST"])
+def session_interrupt(session_id):
+    if session_id not in SESSIONS:
+        return jsonify(success=False, message="無効なセッションID"), 404
+
+    data = request.get_json()
+    text = data.get("text")
+    style_name = data.get("style")
+    if not text:
+        return jsonify(success=False, message="テキストが必要です"), 400
+
+    speaker_uuid = SESSIONS[session_id]["speaker_uuid"]
+
+    # UUIDから対応する音声IDを取得
+    try:
+        res = requests.get(f"{VOICEVOX_BASE_URL}/speakers")
+        res.raise_for_status()
+        speakers = res.json()
+        speaker_id = None
+        for speaker in speakers:
+            if speaker["speaker_uuid"] == speaker_uuid:
+                speaker_id = speaker["styles"][0]["id"]
+                break
+        if speaker_id is None:
+            return jsonify(success=False, message="指定された話者が見つかりません"), 400
+    except requests.exceptions.RequestException as e:
+        print(f"[エラー] 話者情報の取得に失敗しました: {e}")
+        return jsonify(success=False, message="話者情報の取得に失敗しました"), 500
+
+    print(f"[DEBUG] /session/{session_id}/interrupt called with text: {text}, style: {style_name}")
+
+    # 再生中の音声を中断し、新しい音声をキューに追加
+    SESSIONS[session_id]["queue"] = queue.Queue()  # キューをリセット
+    SESSIONS[session_id]["is_playing"] = False  # 再生中フラグをリセット
+
+    print(f"[DEBUG] Queue reset and is_playing flag set to False for session: {session_id}")
+
+    synthesis_queue.put((text, speaker_id, session_id, style_name))
+    print(f"[DEBUG] New synthesis task added to queue for session: {session_id}")
+
+    return jsonify(success=True, message="再生を中断し、新しい音声を追加しました")
 
 @app.route("/audio/<filename>")
 def serve_audio(filename):

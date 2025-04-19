@@ -25,6 +25,7 @@
     const player = document.getElementById("player");
     const muteBtn = document.getElementById("muteBtn");
     let muted = false;
+    let isPlaying = false; // 再生中かどうかを管理するフラグ
 
     muteBtn.addEventListener("click", () => {
       muted = !muted;
@@ -33,11 +34,22 @@
 
     const poll = async () => {
       while (true) {
-        const res = await fetch(`/session/${sessionId}/next`);
-        const data = await res.json();
-        if (data.filename && !muted) {
-          player.src = `/audio/${data.filename}`;
-          await player.play();
+        if (!isPlaying) { // 再生中でない場合のみ次の音声を取得
+          const res = await fetch(`/session/${sessionId}/next`);
+          const data = await res.json();
+
+          if (data.filename && !muted) {
+            player.src = `/audio/${data.filename}`;
+            isPlaying = true; // 再生中フラグを設定
+            player.play().then(() => {
+              player.onended = () => {
+                isPlaying = false; // 再生終了時にフラグをリセット
+              };
+            }).catch((error) => {
+              console.error("Error playing audio:", error);
+              isPlaying = false; // 再生エラー時もフラグをリセット
+            });
+          }
         }
         await new Promise(r => setTimeout(r, 1000));
       }

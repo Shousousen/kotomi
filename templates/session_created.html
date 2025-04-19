@@ -13,7 +13,7 @@
         <h1 class="text-3xl font-extrabold text-gray-800 mb-6 text-center">セッション作成完了 🎉</h1>
         <p class="text-gray-600 mb-4 text-center">以下のリンクから音声再生ページにアクセスできます：</p>
         <div class="bg-gray-100 rounded p-4 font-mono break-all mb-6">
-            <a href="/session/{{ session_id }}/player" class="text-blue-600 hover:text-blue-800 underline">
+            <a href="/session/{{ session_id }}/player" target="blank" class="text-blue-600 hover:text-blue-800 underline">
                 {{ request.host }}/session/{{ session_id }}/player
             </a>
         </div>
@@ -21,7 +21,7 @@
         <div class="bg-gray-100 rounded p-4 font-mono break-all mb-6">
             <input type="text" value="{{ request.host }}/session/{{ session_id }}/player" readonly class="w-full bg-transparent focus:outline-none">
         </div>
-               <h2 class="text-lg font-semibold mb-2">🎤 テスト音声を再生してみる（プレイヤー側で再生されます）</h2>
+        <h2 class="text-lg font-semibold mb-2">🎤 テスト音声を再生してみる（プレイヤー側で再生されます）</h2>
         <div class="flex items-center space-x-2 mb-4">
             <select id="styleSelect" class="p-3 border rounded focus:ring-blue-500 focus:outline-none">
                 <option value="">デフォルトスタイル</option>
@@ -58,45 +58,89 @@
 
         <hr class="my-6">
 
-    <script>
-        const sessionId = "{{ session_id }}"; // セッションIDをテンプレートから取得
+        <h2 class="text-lg font-semibold mb-2">🎵 再生中断と新しい音声の再生</h2>
+        <div class="flex items-center space-x-2 mb-4">
+            <input type="text" id="interruptText" placeholder="例: 新しい音声を再生します" class="flex-1 p-3 border rounded focus:ring-blue-500 focus:outline-none">
+            <button onclick="interruptPlayback()" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">
+                再生を中断して再生
+            </button>
+        </div>
+        <p class="text-gray-600 mb-4 text-center">再生中断と新しい音声再生の利用方法：</p>
+        <div class="bg-gray-100 rounded p-4 font-mono break-all">
+            <p>再生中の音声を中断して新しい音声を再生するには：</p>
+            <p class="text-blue-600">POST {{ request.host }}/session/{{ session_id }}/interrupt</p>
+            <p class="mt-2">リクエストボディの例:</p>
+            <pre class="bg-gray-200 p-2 rounded">{
+  "text": "新しい音声を再生します",
+  "style": "default"
+}</pre>
+            <p class="mt-2">例: curlコマンド</p>
+            <pre class="bg-gray-200 p-2 rounded">curl -X POST {{ request.host }}/session/{{ session_id }}/interrupt \
+-H "Content-Type: application/json" \
+-d '{"text": "新しい音声を再生します", "style": "default"}'</pre>
+        </div>
 
-        async function sendTestText() {
-            const text = document.getElementById('testText').value;
-            const style = document.getElementById('styleSelect').value; // スタイルを取得
-            if (!text.trim()) return;
+        <script>
+            const sessionId = "{{ session_id }}"; // セッションIDをテンプレートから取得
 
-            await fetch(`/session/${sessionId}/speak`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text, style }) // スタイルをリクエストに含める
-            });
-        }
+            async function sendTestText() {
+                const text = document.getElementById('testText').value;
+                const style = document.getElementById('styleSelect').value; // スタイルを取得
+                if (!text.trim()) return;
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            const styleSelect = document.getElementById('styleSelect');
-            try {
-                const response = await fetch('/speakers');
-                if (!response.ok) {
-                    throw new Error(`スタイルリストの取得に失敗しました (${response.status})`);
-                }
-                const speakers = await response.json();
-
-                // スタイル選択肢を動的に追加
-                const speaker = speakers.find(s => s.speaker_uuid === "{{ speaker }}");
-                if (speaker) {
-                    speaker.styles.forEach(style => {
-                        const option = document.createElement('option');
-                        option.value = style.name; // スタイル名を値として設定
-                        option.textContent = style.name; // スタイル名を表示
-                        styleSelect.appendChild(option);
-                    });
-                }
-            } catch (error) {
-                console.error(`スタイルの読み込み中にエラーが発生しました: ${error.message}`);
+                await fetch(`/session/${sessionId}/speak`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text, style }) // スタイルをリクエストに含める
+                });
             }
-        });
-    </script>
+
+            async function interruptPlayback() {
+                const text = document.getElementById('interruptText').value;
+                const style = document.getElementById('styleSelect') ? document.getElementById('styleSelect').value : null;
+                if (!text.trim()) return;
+
+                const response = await fetch(`/session/${sessionId}/interrupt`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text, style })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert("再生を中断し、新しい音声を再生しました。");
+                } else {
+                    alert("エラー: " + result.message);
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', async () => {
+                const styleSelect = document.getElementById('styleSelect');
+                try {
+                    const response = await fetch('/speakers');
+                    if (!response.ok) {
+                        throw new Error(`スタイルリストの取得に失敗しました (${response.status})`);
+                    }
+                    const speakers = await response.json();
+
+                    // スタイル選択肢を動的に追加
+                    const speaker = speakers.find(s => s.speaker_uuid === "{{ speaker }}");
+                    if (speaker) {
+                        speaker.styles.forEach(style => {
+                            const option = document.createElement('option');
+                            option.value = style.name; // スタイル名を値として設定
+                            option.textContent = style.name; // スタイル名を表示
+                            styleSelect.appendChild(option);
+                        });
+                    }
+                } catch (error) {
+                    console.error(`スタイルの読み込み中にエラーが発生しました: ${error.message}`);
+                }
+            });
+        </script>
+
+        <h3 class="text-md font-semibold mt-6">使い方</h3>
+        <p class="text-gray-600 mb-4">再生中の音声を中断して新しい音声を再生するには、上記の入力欄にテキストを入力し、「再生を中断して再生」ボタンをクリックしてください。</p>
     </div>
 </body>
 
