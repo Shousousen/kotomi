@@ -4,6 +4,7 @@ import threading
 import queue
 import requests
 from flask import Flask, request, jsonify, send_from_directory, render_template
+from uuid import UUID
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 AUDIO_FOLDER = "static/audio"
@@ -16,8 +17,8 @@ SESSIONS = {}  # session_id: {speaker, queue}
 def synthesis_worker():
     while True:
         try:
-            text, speaker, session_id = synthesis_queue.get()
-            filename = synthesize_and_save(text, speaker)
+            text, speaker, session_id, style_name = synthesis_queue.get()
+            filename = synthesize_and_save(text, speaker, style_name)
             if session_id in SESSIONS:
                 SESSIONS[session_id]["queue"].put(filename)
             synthesis_queue.task_done()
@@ -25,7 +26,7 @@ def synthesis_worker():
             print("[エラー] 音声合成中に例外発生:", e)
             synthesis_queue.task_done()
 
-def synthesize_and_save(text, speaker_id):
+def synthesize_and_save(text, speaker_id, style_name=None):
     query_res = requests.post(
         f"{VOICEVOX_BASE_URL}/audio_query",
         params={"text": text, "speaker": speaker_id}
@@ -33,11 +34,22 @@ def synthesize_and_save(text, speaker_id):
     query_res.raise_for_status()
     audio_query = query_res.json()
 
+    # スタイル名が指定されていない場合、最もIDの若いスタイルを選択
+    if style_name is None:
+        speakers_res = requests.get(f"{VOICEVOX_BASE_URL}/speakers")
+        speakers_res.raise_for_status()
+        speakers = speakers_res.json()
+
+        for speaker in speakers:
+            if speaker["id"] == speaker_id:
+                style_name = speaker["styles"][0]["name"]  # 最もIDの若いスタイルを選択
+                break
+
     synthesis_res = requests.post(
         f"{VOICEVOX_BASE_URL}/synthesis",
         params={"speaker": speaker_id},
         headers={"Content-Type": "application/json", "Accept": "audio/wav"},
-        json=audio_query
+        json={**audio_query, "style": style_name}  # スタイル名をリクエストボディに含める
     )
     synthesis_res.raise_for_status()
     audio_data = synthesis_res.content
@@ -74,15 +86,19 @@ def get_speakers():
 
 @app.route("/session/create", methods=["POST"])
 def create_session():
-    speaker = request.form.get("speaker", type=int)
-    if speaker is None:
-        return "話者を選択してください", 400
+    speaker_uuid = request.form.get("speaker")
+    try:
+        # UUID形式の検証
+        UUID(speaker_uuid, version=4)
+    except ValueError:
+        return "無効な話者IDです", 400
+
     session_id = uuid.uuid4().hex[:8]
     SESSIONS[session_id] = {
-        "speaker": speaker,
+        "speaker_uuid": speaker_uuid,  # UUIDを保存
         "queue": queue.Queue()
     }
-    return render_template("session_created.html", session_id=session_id, speaker=speaker)
+    return render_template("session_created.html", session_id=session_id, speaker=speaker_uuid)
 
 @app.route("/session/<session_id>/player")
 def session_player(session_id):
@@ -96,10 +112,29 @@ def session_speak(session_id):
         return jsonify(success=False, message="無効なセッションID"), 404
     data = request.get_json()
     text = data.get("text")
+    style_name = data.get("style")  # スタイル名を取得
     if not text:
         return jsonify(success=False, message="テキストが必要です"), 400
-    speaker = SESSIONS[session_id]["speaker"]
-    synthesis_queue.put((text, speaker, session_id))
+
+    speaker_uuid = SESSIONS[session_id]["speaker_uuid"]  # UUIDを取得
+
+    # UUIDから対応する音声IDを取得
+    try:
+        res = requests.get(f"{VOICEVOX_BASE_URL}/speakers")
+        res.raise_for_status()
+        speakers = res.json()
+        speaker_id = None
+        for speaker in speakers:
+            if speaker["speaker_uuid"] == speaker_uuid:
+                speaker_id = speaker["styles"][0]["id"]  # 最初のスタイルのIDを使用
+                break
+        if speaker_id is None:
+            return jsonify(success=False, message="指定された話者が見つかりません"), 400
+    except requests.exceptions.RequestException as e:
+        print(f"[エラー] 話者情報の取得に失敗しました: {e}")
+        return jsonify(success=False, message="話者情報の取得に失敗しました"), 500
+
+    synthesis_queue.put((text, speaker_id, session_id, style_name))
     return jsonify(success=True, message="音声化タスクをキューに追加しました")
 
 @app.route("/session/<session_id>/next", methods=["GET"])
@@ -120,4 +155,4 @@ synthesis_thread = threading.Thread(target=synthesis_worker, daemon=True)
 synthesis_thread.start()
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5001)
+    app.run(host='0.0.0.0', port=5001, debug=True)

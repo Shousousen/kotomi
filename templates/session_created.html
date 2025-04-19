@@ -29,6 +29,10 @@
 
         <h2 class="text-lg font-semibold mb-2">🎤 テスト音声を再生してみる（プレイヤー側で再生されます）</h2>
         <div class="flex items-center space-x-2 mb-4">
+            <select id="styleSelect" class="p-3 border rounded focus:ring-blue-500 focus:outline-none">
+                <option value="">デフォルトスタイル</option>
+                <!-- スタイルの選択肢を動的に追加する -->
+            </select>
             <input type="text" id="testText" placeholder="例: おはようございます"
                 class="flex-1 p-3 border rounded focus:ring-blue-500 focus:outline-none">
             <button onclick="sendTestText()"
@@ -39,33 +43,43 @@
     </div>
 
     <script>
-        const sessionId = "{{ session_id }}";
+        const sessionId = "{{ session_id }}"; // セッションIDをテンプレートから取得
 
         async function sendTestText() {
             const text = document.getElementById('testText').value;
+            const style = document.getElementById('styleSelect').value; // スタイルを取得
             if (!text.trim()) return;
 
             await fetch(`/session/${sessionId}/speak`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text })
+                body: JSON.stringify({ text, style }) // スタイルをリクエストに含める
             });
         }
 
-        function copyToClipboard() {
-            // コピー対象のテキストフィールドを取得
-            const copyText = document.querySelector('input[type="text"]');
+        document.addEventListener('DOMContentLoaded', async () => {
+            const styleSelect = document.getElementById('styleSelect');
+            try {
+                const response = await fetch('/speakers');
+                if (!response.ok) {
+                    throw new Error(`スタイルリストの取得に失敗しました (${response.status})`);
+                }
+                const speakers = await response.json();
 
-            // テキストフィールドを選択状態にする
-            copyText.select();
-            copyText.setSelectionRange(0, 99999); // モバイルでも選択できるように
-
-            // テキストをクリップボードにコピー
-            document.execCommand('copy');
-
-            // コピー成功メッセージを表示することも可能
-            alert('音声再生用エンドポイントがコピーされました！');
-        }
+                // スタイル選択肢を動的に追加
+                const speaker = speakers.find(s => s.speaker_uuid === "{{ speaker }}");
+                if (speaker) {
+                    speaker.styles.forEach(style => {
+                        const option = document.createElement('option');
+                        option.value = style.name; // スタイル名を値として設定
+                        option.textContent = style.name; // スタイル名を表示
+                        styleSelect.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error(`スタイルの読み込み中にエラーが発生しました: ${error.message}`);
+            }
+        });
     </script>
 </body>
 

@@ -20,14 +20,12 @@
         // セレクトボックスをクリア (初期オプションを除く)
         speakerSelect.innerHTML = '<option value="">話者を選択してください</option>';
 
-        // 各話者のスタイルをセレクトボックスに追加
+        // 各話者をセレクトボックスに追加
         speakers.forEach(speaker => {
-          speaker.styles.forEach(style => {
-            const option = document.createElement('option');
-            option.value = style.id; // スタイルIDを値として設定
-            option.textContent = `${speaker.name} (${style.name})`; // 話者名 (スタイル名) を表示
-            speakerSelect.appendChild(option);
-          });
+          const option = document.createElement('option');
+          option.value = speaker.speaker_uuid; // 話者UUIDを値として設定
+          option.textContent = speaker.name; // 話者名を表示
+          speakerSelect.appendChild(option);
         });
 
       } catch (error) {
