@@ -20,6 +20,7 @@ config = load_config()
 VOICEVOX_BASE_URL = config["voicevox"]["base_url"]
 AUDIO_FOLDER = config["audio"]["folder"]
 DEFAULT_AUDIO_DURATION = config["audio"]["default_duration"]
+MAX_AUDIO_FILES = config["audio"].get("max_files", 100)  # 音声ファイルの上限を設定
 DEBUG_MODE = config["app"]["debug"]
 APP_URL = config["app"]["url"]
 
@@ -35,6 +36,7 @@ def synthesis_worker():
         try:
             text, speaker, session_id, style_name = synthesis_queue.get()
             filename = synthesize_and_save(text, speaker, style_name)
+            manage_audio_files()  # 音声ファイルの管理を実行
             if session_id in SESSIONS:
                 SESSIONS[session_id]["queue"].put(filename)
             synthesis_queue.task_done()
@@ -216,6 +218,29 @@ def get_session_styles(session_id):
     # Example: Retrieve styles from the session (replace with actual logic)
     styles = session.get("styles", [])
     return jsonify({"styles": styles})
+
+def manage_audio_files():
+    # キューに残っているファイルを取得
+    queued_files = set()
+    for session in SESSIONS.values():
+        queued_files.update(list(session["queue"].queue))
+
+    # フォルダ内のすべての音声ファイルを取得
+    audio_files = sorted(
+        [os.path.join(AUDIO_FOLDER, f) for f in os.listdir(AUDIO_FOLDER) if f.endswith(".wav")],
+        key=os.path.getctime
+    )
+
+    # キューに含まれていないファイルのみを対象に削除を実行
+    non_queued_files = [f for f in audio_files if os.path.basename(f) not in queued_files]
+
+    while len(non_queued_files) > MAX_AUDIO_FILES:
+        oldest_file = non_queued_files.pop(0)
+        try:
+            os.remove(oldest_file)
+            print(f"[INFO] 古い音声ファイルを削除しました: {oldest_file}")
+        except Exception as e:
+            print(f"[エラー] 音声ファイルの削除に失敗しました: {e}")
 
 synthesis_thread = threading.Thread(target=synthesis_worker, daemon=True)
 synthesis_thread.start()

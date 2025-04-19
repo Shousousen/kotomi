@@ -11,3 +11,4 @@ voicevox:
 audio:
   folder: "static/audio"  # 音声ファイルの保存先
   default_duration: 10  # 音声ファイルのデフォルト再生時間（秒）
+  max_files: 1
