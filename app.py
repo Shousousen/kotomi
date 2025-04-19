@@ -7,12 +7,26 @@ from flask import Flask, request, jsonify, send_from_directory, render_template
 from uuid import UUID
 import webbrowser
 from pydub.utils import mediainfo
+import yaml
+
+# 設定ファイルの読み込み
+def load_config():
+    with open("config.yaml", "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+config = load_config()
+
+# 設定を適用
+VOICEVOX_BASE_URL = config["voicevox"]["base_url"]
+AUDIO_FOLDER = config["audio"]["folder"]
+DEFAULT_AUDIO_DURATION = config["audio"]["default_duration"]
+DEBUG_MODE = config["app"]["debug"]
+APP_URL = config["app"]["url"]
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
-AUDIO_FOLDER = "static/audio"
 os.makedirs(AUDIO_FOLDER, exist_ok=True)
+app.debug = DEBUG_MODE
 
-VOICEVOX_BASE_URL = "http://localhost:10101"
 synthesis_queue = queue.Queue()
 SESSIONS = {}  # session_id: {speaker, queue}
 
@@ -174,7 +188,7 @@ def session_next(session_id):
             duration = float(audio_info["duration"])  # 再生時間を秒単位で取得
         except Exception as e:
             print(f"[エラー] 音声ファイルの長さ取得に失敗: {e}")
-            duration = 10  # デフォルトで10秒に設定
+            duration = DEFAULT_AUDIO_DURATION  # デフォルトで10秒に設定
 
         # 再生時間後にフラグをリセット
         threading.Timer(duration, reset_playing_flag, args=[session_id]).start()

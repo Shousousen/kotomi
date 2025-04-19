@@ -1,0 +1,13 @@
+# config.yaml
+# アプリケーションの設定を管理するファイル
+
+app:
+  url: "http://127.0.0.1:5000"  # アプリケーションのURL
+  debug: true  # デバッグモードの有効化
+
+voicevox:
+  base_url: "http://localhost:10101"  # VOICEVOXのベースURL
+
+audio:
+  folder: "static/audio"  # 音声ファイルの保存先
+  default_duration: 10  # 音声ファイルのデフォルト再生時間（秒）
