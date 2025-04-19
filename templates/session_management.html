@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>セッション管理</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f9f9f9;
+        }
+        h1 {
+            color: #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        .copyable {
+            background-color: #fff;
+            border: 1px solid #ccc;
+            padding: 5px;
+            cursor: pointer;
+        }
+        .copyable:hover {
+            background-color: #f9f9f9;
+        }
+        .actions a, .actions button {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>セッション管理</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>セッションID</th>
+                <th>話者UUID</th>
+                <th>キューサイズ</th>
+                <th>再生中</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for session_id, session in sessions.items() %}
+            <tr>
+                <td>{{ session_id }}</td>
+                <td>{{ session.speaker_uuid }}</td>
+                <td>{{ session.queue.qsize() }}</td>
+                <td>{{ 'はい' if session.is_playing else 'いいえ' }}</td>
+                <td class="actions">
+                    <a href="/session/{{ session_id }}/player" target="_blank">再生画面</a>
+                    <div class="copyable" onclick="copyToClipboard('{{ request.host }}/api/session/{{ session_id }}')">
+                        {{ request.host }}/api/session/{{ session_id }}
+                    </div>
+                    <form action="/session/{{ session_id }}/delete" method="POST" style="display:inline;" onsubmit="return confirmDelete(this);">
+                        <button type="submit">削除</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="/">戻る</a>
+    <script>
+        function confirmDelete(form) {
+            if (confirm("本当にこのセッションを削除しますか？")) {
+                fetch(form.action, { method: "POST" })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert(data.message);
+                            location.reload();
+                        } else {
+                            alert(data.message);
+                        }
+                    })
+                    .catch(error => alert("エラーが発生しました: " + error));
+                return false; // ページリロードを防ぐ
+            }
+            return false;
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert("URLをコピーしました: " + text);
+            }).catch(err => {
+                alert("コピーに失敗しました: " + err);
+            });
+        }
+    </script>
+</body>
+</html>

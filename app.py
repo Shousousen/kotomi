@@ -82,6 +82,10 @@ def synthesize_and_save(text, speaker_id, style_name=None):
 
 @app.route("/")
 def index():
+    return render_template("index.html", sessions=SESSIONS)
+
+@app.route("/session/create", methods=["GET"])
+def init_session():
     try:
         res = requests.get(f"{VOICEVOX_BASE_URL}/speakers")
         res.raise_for_status()
@@ -218,6 +222,47 @@ def get_session_styles(session_id):
     # Example: Retrieve styles from the session (replace with actual logic)
     styles = session.get("styles", [])
     return jsonify({"styles": styles})
+
+@app.route("/api/sessions", methods=["GET"])
+def get_sessions():
+    """セッション情報を取得するエンドポイント"""
+    sessions_info = {
+        session_id: {
+            "speaker_uuid": session["speaker_uuid"],
+            "queue_size": session["queue"].qsize(),
+            "is_playing": session.get("is_playing", False)
+        }
+        for session_id, session in SESSIONS.items()
+    }
+    return jsonify(sessions_info)
+
+@app.route("/session/<session_id>/delete", methods=["POST"])
+def delete_session(session_id):
+    """セッションを削除するエンドポイント"""
+    if session_id in SESSIONS:
+        del SESSIONS[session_id]
+        print(f"[INFO] セッションを削除しました: {session_id}")
+        return jsonify(success=True, message="セッションを削除しました")
+    return jsonify(success=False, message="セッションが見つかりません"), 404
+
+@app.route("/api/session/<session_id>", methods=["GET"])
+def get_session_details(session_id):
+    """特定のセッションの詳細情報を取得"""
+    session = SESSIONS.get(session_id)
+    if not session:
+        return jsonify({"error": "セッションが見つかりません"}), 404
+
+    session_details = {
+        "speaker_uuid": session["speaker_uuid"],
+        "queue_size": session["queue"].qsize(),
+        "is_playing": session.get("is_playing", False)
+    }
+    return jsonify(session_details)
+
+@app.route("/session/manage", methods=["GET"])
+def manage_sessions():
+    """セッション管理画面を表示するエンドポイント"""
+    return render_template("session_management.html", sessions=SESSIONS)
 
 def manage_audio_files():
     # キューに残っているファイルを取得
