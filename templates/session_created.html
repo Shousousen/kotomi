@@ -3,31 +3,25 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>セッション作成完了 | Voice App</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="bg-green-50 flex items-center justify-center min-h-screen">
-    <div class="bg-white shadow-2xl rounded-2xl p-8 w-full max-w-xl">
-        <h1 class="text-2xl font-bold text-green-700 mb-4">セッション作成完了 🎉</h1>
-        <p class="mb-4">以下のリンクから音声再生ページにアクセスできます：</p>
-        <div class="bg-gray-100 rounded p-4 font-mono break-all mb-4">
-            <a href="/session/{{ session_id }}/player" class="text-blue-600 underline">
+<body class="bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center min-h-screen">
+    <div class="bg-white shadow-lg rounded-lg p-8 w-full max-w-2xl">
+        <h1 class="text-3xl font-extrabold text-gray-800 mb-6 text-center">セッション作成完了 🎉</h1>
+        <p class="text-gray-600 mb-4 text-center">以下のリンクから音声再生ページにアクセスできます：</p>
+        <div class="bg-gray-100 rounded p-4 font-mono break-all mb-6">
+            <a href="/session/{{ session_id }}/player" class="text-blue-600 hover:text-blue-800 underline">
                 {{ request.host }}/session/{{ session_id }}/player
             </a>
         </div>
-        <p class="mb-4">音声再生用エンドポイント：</p>
-        <div class="bg-gray-100 rounded p-4 font-mono break-all mb-4">
-            <input type="text" value="{{ request.host }}/session/{{ session_id }}/player" readonly
-                class="w-full bg-gray-100 text-gray-700 p-2 border border-gray-300 rounded">
-            <button onclick="copyToClipboard()" class="bg-blue-600 text-white py-2 px-4 rounded mt-2 hover:bg-blue-700">
-                コピー
-            </button>
+        <p class="text-gray-600 mb-4 text-center">音声再生用エンドポイント：</p>
+        <div class="bg-gray-100 rounded p-4 font-mono break-all mb-6">
+            <input type="text" value="{{ request.host }}/session/{{ session_id }}/player" readonly class="w-full bg-transparent focus:outline-none">
         </div>
-
-        <hr class="my-6">
-
-        <h2 class="text-lg font-semibold mb-2">🎤 テスト音声を再生してみる（プレイヤー側で再生されます）</h2>
+               <h2 class="text-lg font-semibold mb-2">🎤 テスト音声を再生してみる（プレイヤー側で再生されます）</h2>
         <div class="flex items-center space-x-2 mb-4">
             <select id="styleSelect" class="p-3 border rounded focus:ring-blue-500 focus:outline-none">
                 <option value="">デフォルトスタイル</option>
@@ -40,7 +34,29 @@
                 再生
             </button>
         </div>
-    </div>
+        <p class="text-gray-600 mb-4 text-center">APIエンドポイントの利用方法：</p>
+        <div class="bg-gray-100 rounded p-4 font-mono break-all mb-6">
+            <p>利用可能なスタイルを取得するには：</p>
+            <p class="text-blue-600">GET {{ request.host }}/api/session/{{ session_id }}/styles</p>
+            <p class="mt-2">例: curlコマンド</p>
+            <pre class="bg-gray-200 p-2 rounded">curl -X GET {{ request.host }}/api/session/{{ session_id }}/styles</pre>
+        </div>
+        <p class="text-gray-600 mb-4 text-center">音声合成の利用方法：</p>
+        <div class="bg-gray-100 rounded p-4 font-mono break-all">
+            <p>音声を合成するには：</p>
+            <p class="text-blue-600">POST {{ request.host }}/api/session/{{ session_id }}/synthesize</p>
+            <p class="mt-2">リクエストボディの例:</p>
+            <pre class="bg-gray-200 p-2 rounded">{
+  "text": "こんにちは",
+  "style": "default"
+}</pre>
+            <p class="mt-2">例: curlコマンド</p>
+            <pre class="bg-gray-200 p-2 rounded">curl -X POST {{ request.host }}/api/session/{{ session_id }}/synthesize \
+-H "Content-Type: application/json" \
+-d '{"text": "こんにちは", "style": "default"}'</pre>
+        </div>
+
+        <hr class="my-6">
 
     <script>
         const sessionId = "{{ session_id }}"; // セッションIDをテンプレートから取得
@@ -81,6 +97,7 @@
             }
         });
     </script>
+    </div>
 </body>
 
 </html>
