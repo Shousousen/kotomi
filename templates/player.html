@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>音声プレイヤー | Voice App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
+  <div class="bg-gray-800 shadow-lg rounded-xl p-6 w-full max-w-xl">
+    <h1 class="text-2xl font-semibold mb-4 text-center">🔊 音声プレイヤー</h1>
+
+    <div class="flex justify-center mb-4">
+      <button id="muteBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition">
+        🔇 ミュート
+      </button>
+    </div>
+
+    <audio id="player" class="w-full hidden" autoplay></audio>
+
+    <p class="text-sm text-gray-400 mt-4 text-center">ページを開いている間、音声が自動再生されます</p>
+  </div>
+
+  <script>
+    const sessionId = "{{ session_id }}";
+    const player = document.getElementById("player");
+    const muteBtn = document.getElementById("muteBtn");
+    let muted = false;
+
+    muteBtn.addEventListener("click", () => {
+      muted = !muted;
+      muteBtn.textContent = muted ? "🔈 ミュート解除" : "🔇 ミュート";
+    });
+
+    const poll = async () => {
+      while (true) {
+        const res = await fetch(`/session/${sessionId}/next`);
+        const data = await res.json();
+        if (data.filename && !muted) {
+          player.src = `/audio/${data.filename}`;
+          await player.play();
+        }
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    };
+
+    poll();
+  </script>
+</body>
+</html>

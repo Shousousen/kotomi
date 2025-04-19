@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>セッション作成 | Voice App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const errorMessageDiv = document.getElementById('error-message');
+      const speakerSelect = document.getElementById('speaker');
+      errorMessageDiv.textContent = ''; // エラーメッセージをクリア
+
+      try {
+        const response = await fetch('/speakers');
+        if (!response.ok) {
+          throw new Error(`話者リストの取得に失敗しました (${response.status})`);
+        }
+        const speakers = await response.json();
+
+        // セレクトボックスをクリア (初期オプションを除く)
+        speakerSelect.innerHTML = '<option value="">話者を選択してください</option>';
+
+        // 各話者のスタイルをセレクトボックスに追加
+        speakers.forEach(speaker => {
+          speaker.styles.forEach(style => {
+            const option = document.createElement('option');
+            option.value = style.id; // スタイルIDを値として設定
+            option.textContent = `${speaker.name} (${style.name})`; // 話者名 (スタイル名) を表示
+            speakerSelect.appendChild(option);
+          });
+        });
+
+      } catch (error) {
+        displayError(`話者の読み込み中にエラーが発生しました: ${error.message}`);
+      }
+    });
+
+    // エラーメッセージを表示する関数
+    function displayError(message) {
+      const errorMessageDiv = document.getElementById('error-message');
+      errorMessageDiv.textContent = message;
+      errorMessageDiv.classList.remove('hidden');
+    }
+  </script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+  <div class="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md">
+    <h1 class="text-2xl font-bold mb-6 text-center">セッションを作成</h1>
+
+    <!-- エラーメッセージを表示するための div -->
+    <div id="error-message" class="text-red-500 mb-4 hidden"></div>
+
+    <form method="post" action="/session/create">
+      <label for="speaker" class="block mb-2 font-medium text-gray-700">話者を選んでください</label>
+      <select name="speaker" id="speaker"
+              class="w-full p-3 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-6">
+        <!-- 動的に話者がここに追加されます -->
+      </select>
+
+      <button type="submit"
+              class="w-full bg-blue-600 text-white py-3 rounded hover:bg-blue-700 transition duration-200">
+        セッションを開始する
+      </button>
+    </form>
+  </div>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>セッション作成完了 | Voice App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-green-50 flex items-center justify-center min-h-screen">
+    <div class="bg-white shadow-2xl rounded-2xl p-8 w-full max-w-xl">
+        <h1 class="text-2xl font-bold text-green-700 mb-4">セッション作成完了 🎉</h1>
+        <p class="mb-4">以下のリンクから音声再生ページにアクセスできます：</p>
+        <div class="bg-gray-100 rounded p-4 font-mono break-all mb-4">
+            <a href="/session/{{ session_id }}/player" class="text-blue-600 underline">
+                {{ request.host }}/session/{{ session_id }}/player
+            </a>
+        </div>
+        <p class="mb-4">音声再生用エンドポイント：</p>
+        <div class="bg-gray-100 rounded p-4 font-mono break-all mb-4">
+            <input type="text" value="{{ request.host }}/session/{{ session_id }}/player" readonly
+                class="w-full bg-gray-100 text-gray-700 p-2 border border-gray-300 rounded">
+            <button onclick="copyToClipboard()" class="bg-blue-600 text-white py-2 px-4 rounded mt-2 hover:bg-blue-700">
+                コピー
+            </button>
+        </div>
+
+        <hr class="my-6">
+
+        <h2 class="text-lg font-semibold mb-2">🎤 テスト音声を再生してみる（プレイヤー側で再生されます）</h2>
+        <div class="flex items-center space-x-2 mb-4">
+            <input type="text" id="testText" placeholder="例: おはようございます"
+                class="flex-1 p-3 border rounded focus:ring-blue-500 focus:outline-none">
+            <button onclick="sendTestText()"
+                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                再生
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const sessionId = "{{ session_id }}";
+
+        async function sendTestText() {
+            const text = document.getElementById('testText').value;
+            if (!text.trim()) return;
+
+            await fetch(`/session/${sessionId}/speak`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text })
+            });
+        }
+
+        function copyToClipboard() {
+            // コピー対象のテキストフィールドを取得
+            const copyText = document.querySelector('input[type="text"]');
+
+            // テキストフィールドを選択状態にする
+            copyText.select();
+            copyText.setSelectionRange(0, 99999); // モバイルでも選択できるように
+
+            // テキストをクリップボードにコピー
+            document.execCommand('copy');
+
+            // コピー成功メッセージを表示することも可能
+            alert('音声再生用エンドポイントがコピーされました！');
+        }
+    </script>
+</body>
+
+</html>
