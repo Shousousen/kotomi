@@ -151,6 +151,17 @@ def session_next(session_id):
 def serve_audio(filename):
     return send_from_directory(AUDIO_FOLDER, filename)
 
+@app.route('/api/session/<session_id>/styles', methods=['GET'])
+def get_session_styles(session_id):
+    """Retrieve the list of styles available for a given session."""
+    session = SESSIONS.get(session_id)
+    if not session:
+        return jsonify({"error": "Session not found"}), 404
+
+    # Example: Retrieve styles from the session (replace with actual logic)
+    styles = session.get("styles", [])
+    return jsonify({"styles": styles})
+
 synthesis_thread = threading.Thread(target=synthesis_worker, daemon=True)
 synthesis_thread.start()
 
