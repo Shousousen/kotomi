@@ -46,6 +46,34 @@
 </head>
 <body>
     <h1>セッション管理</h1>
+
+    <h2>既定のセッション</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>セッションID</th>
+                <th>話者UUID</th>
+                <th>キューサイズ</th>
+                <th>再生中</th>
+                <th>再生画面URL</th>
+                <th>エンドポイントURL</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for session_id, session in default_session.items() %}
+            <tr>
+                <td>{{ session_id }}</td>
+                <td>{{ session.speaker_uuid }}</td>
+                <td>{{ session.queue.qsize() }}</td>
+                <td>{{ "はい" if session.is_playing else "いいえ" }}</td>
+                <td><a href="/session/{{ session_id }}/player" target="_blank">再生画面</a></td>
+                <td><a href="/api/session/{{ session_id }}" target="_blank">エンドポイント</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>その他のセッション</h2>
     <table>
         <thead>
             <tr>
@@ -54,6 +82,8 @@
                 <th>キューサイズ</th>
                 <th>再生中</th>
                 <th>操作</th>
+                <th>再生画面URL</th>
+                <th>エンドポイントURL</th>
             </tr>
         </thead>
         <tbody>
@@ -62,16 +92,15 @@
                 <td>{{ session_id }}</td>
                 <td>{{ session.speaker_uuid }}</td>
                 <td>{{ session.queue.qsize() }}</td>
-                <td>{{ 'はい' if session.is_playing else 'いいえ' }}</td>
+                <td>{{ "はい" if session.is_playing else "いいえ" }}</td>
                 <td class="actions">
-                    <a href="/session/{{ session_id }}/player" target="_blank">再生画面</a>
-                    <div class="copyable" onclick="copyToClipboard('{{ request.host }}/api/session/{{ session_id }}')">
-                        {{ request.host }}/api/session/{{ session_id }}
-                    </div>
-                    <form action="/session/{{ session_id }}/delete" method="POST" style="display:inline;" onsubmit="return confirmDelete(this);">
+                    <a href="/session/{{ session_id }}/player">再生</a>
+                    <form action="/session/{{ session_id }}/delete" method="post" style="display:inline;">
                         <button type="submit">削除</button>
                     </form>
                 </td>
+                <td><a href="/session/{{ session_id }}/player" target="_blank">再生画面</a></td>
+                <td><a href="/api/session/{{ session_id }}" target="_blank">エンドポイント</a></td>
             </tr>
             {% endfor %}
         </tbody>

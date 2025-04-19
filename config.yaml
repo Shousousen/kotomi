@@ -12,3 +12,7 @@ audio:
   folder: "static/audio"  # 音声ファイルの保存先
   default_duration: 10  # 音声ファイルのデフォルト再生時間（秒）
   max_files: 1
+
+default_session:
+  id: "default"  # 固定セッションID
+  speaker_uuid: "6dae56ed-00c0-45d3-aa10-fff14f165f8d"  # 話者ID

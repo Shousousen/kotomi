@@ -128,10 +128,22 @@ def session_player(session_id):
         return "セッションが存在しません", 404
     return render_template("player.html", session_id=session_id)
 
+# Load default session from config
+DEFAULT_SESSION_ID = config.get("default_session", {}).get("id")
+DEFAULT_SPEAKER_UUID = config.get("default_session", {}).get("speaker_uuid")
+
+if DEFAULT_SESSION_ID and DEFAULT_SPEAKER_UUID:
+    SESSIONS[DEFAULT_SESSION_ID] = {
+        "speaker_uuid": DEFAULT_SPEAKER_UUID,
+        "queue": queue.Queue(),
+        "is_default": True  # Mark this session as the default
+    }
+    print(f"[INFO] Default session initialized: {DEFAULT_SESSION_ID}")
+
 @app.route("/session/<session_id>/speak", methods=["POST"])
 def session_speak(session_id):
-    if session_id not in SESSIONS:
-        return jsonify(success=False, message="無効なセッションID"), 404
+    if session_id == "default" or session_id not in SESSIONS:
+        session_id = DEFAULT_SESSION_ID  # Use default session if not specified
 
     data = request.get_json()
     text = data.get("text")
@@ -262,7 +274,9 @@ def get_session_details(session_id):
 @app.route("/session/manage", methods=["GET"])
 def manage_sessions():
     """セッション管理画面を表示するエンドポイント"""
-    return render_template("session_management.html", sessions=SESSIONS)
+    default_session = {k: v for k, v in SESSIONS.items() if v.get("is_default")}
+    other_sessions = {k: v for k, v in SESSIONS.items() if not v.get("is_default")}
+    return render_template("session_management.html", default_session=default_session, sessions=other_sessions)
 
 def manage_audio_files():
     # キューに残っているファイルを取得
