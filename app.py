@@ -5,6 +5,7 @@ import queue
 import requests
 from flask import Flask, request, jsonify, send_from_directory, render_template
 from uuid import UUID
+import webbrowser
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 AUDIO_FOLDER = "static/audio"
@@ -166,4 +167,7 @@ synthesis_thread = threading.Thread(target=synthesis_worker, daemon=True)
 synthesis_thread.start()
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    port = 5000
+    url = f"http://127.0.0.1:{port}/"
+    threading.Timer(1.0, lambda: webbrowser.open(url)).start()
+    app.run(host="0.0.0.0", port=port)
